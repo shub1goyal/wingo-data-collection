@@ -20,17 +20,41 @@ const supabase = createClient(supabaseUrl || '', supabaseKey || '');
 
 const API_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json';
 
+const PROXIES = [
+    (url) => url, // Direct
+    (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
+];
+
+async function fetchWithRetry() {
+    for (let proxy of PROXIES) {
+        try {
+            const url = proxy(API_URL);
+            console.log(`Fetching via: ${url.substring(0, 50)}...`);
+            const res = await axios.get(url, { 
+                timeout: 8000, 
+                headers: { 'User-Agent': 'Mozilla/5.0' } 
+            });
+            let data = res.data;
+            if (typeof data === 'string') data = JSON.parse(data);
+            const items = data.data?.list || data.list || [];
+            if (Array.isArray(items) && items.length > 0) return items;
+        } catch (e) {
+            console.warn(`Proxy failed: ${e.message}`);
+        }
+    }
+    return [];
+}
+
 // Collector Logic
 async function syncData() {
     const now = new Date().toISOString();
     console.log(`[${now}] Starting Sync...`);
     try {
-        const response = await axios.get(API_URL, { timeout: 10000 });
-        const data = response.data;
-        const items = data.data?.list || [];
+        const items = await fetchWithRetry();
 
         if (items.length === 0) {
-            console.log("No new data found.");
+            console.log("No data found from any proxy.");
             return;
         }
 
@@ -48,9 +72,10 @@ async function syncData() {
         else console.log(`Sync Successful: ${sanitized.length} rounds.`);
         
     } catch (e) {
-        console.error("Fetch Error:", e.message);
+        console.error("Critical Sync Error:", e.message);
     }
 }
+
 
 // 24/7 Loop: Run every 30 seconds
 setInterval(syncData, 30000);
