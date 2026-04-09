@@ -58,14 +58,23 @@ async function syncData() {
             return;
         }
 
-        let sanitized = items.map(item => ({
-            issue: String(item.issue),
-            color: String(item.color || 'UNKNOWN'),
-            timestamp: Number(item.timestamp || Date.now())
-        }));
+        const sanitized = items.map(item => {
+            const issueVal = item.issue || item.issueNumber || item.period;
+            return {
+                issue: issueVal ? String(issueVal) : 'undefined',
+                color: String(item.color || item.resultColor || 'UNKNOWN'),
+                timestamp: Number(item.timestamp || item.time || Date.now())
+            };
+        }).filter(item => item.issue !== 'undefined');
+
+        if (sanitized.length === 0) {
+            console.log("No valid rounds to sync (all issues undefined).");
+            return;
+        }
 
         // Remove duplicates WITHIN the same request to prevent Supabase ON CONFLICT error
         const uniqueItems = Array.from(new Map(sanitized.map(item => [item.issue, item])).values());
+
 
         const { error } = await supabase
             .from('wingo_history')
