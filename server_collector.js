@@ -1,15 +1,22 @@
-const express = require('express');
-const { createClient } = require('@supabase/supabase-js');
-const axios = require('axios');
-require('dotenv').config();
+import express from 'express';
+import { createClient } from '@supabase/supabase-js';
+import axios from 'axios';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 // Initialize Supabase
-const supabaseUrl = process.env.SUPABASE_URL || 'https://amhuejwptegjwohwfluk.supabase.co';
-const supabaseKey = process.env.SUPABASE_KEY || 'sb_publishable_7xsYTB6aSvii6Wu2kbFV2A_a8T37Ys7';
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+    console.error("Missing SUPABASE_URL or SUPABASE_KEY environment variables.");
+}
+
+const supabase = createClient(supabaseUrl || '', supabaseKey || '');
 
 const API_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json';
 
@@ -22,7 +29,10 @@ async function syncData() {
         const data = response.data;
         const items = data.data?.list || [];
 
-        if (items.length === 0) return;
+        if (items.length === 0) {
+            console.log("No new data found.");
+            return;
+        }
 
         const sanitized = items.map(item => ({
             issue: String(item.issue),
@@ -45,17 +55,13 @@ async function syncData() {
 // 24/7 Loop: Run every 30 seconds
 setInterval(syncData, 30000);
 
-// Basic Health Check Endpoint for Render/UptimeRobot
+// Basic Health Check
 app.get('/', (req, res) => {
-    res.send({
-        status: 'online',
-        message: 'WinGo 24/7 Collector is running.',
-        timestamp: new Date().toISOString()
-    });
+    res.send({ status: 'online', message: 'WinGo 24/7 Collector is active.' });
 });
 
 app.listen(port, () => {
     console.log(`Collector server listening on port ${port}`);
-    // Run once immediately on start
     syncData();
 });
+
