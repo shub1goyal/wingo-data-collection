@@ -1,0 +1,26 @@
+name: WinGo Data Collector
+
+on:
+  schedule:
+    - cron: '*/3 * * * *' # Every 3 minutes to ensure no gaps in 30s data
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          
+      - name: Install Dependencies
+        run: npm install @supabase/supabase-js axios dotenv
+        
+      - name: Run Collector
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: node collector_simple.js

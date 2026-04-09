@@ -1,0 +1,11 @@
+{
+  "name": "wingo-simple-collector",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "collector_simple.js",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "axios": "^1.6.0",
+    "dotenv": "^16.3.1"
+  }
+}
