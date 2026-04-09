@@ -1,0 +1,33 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: daily_history/{date}/issues
+    // Document ID: {issueId}
+    // Fields:
+    //   - id: string (required)
+    //   - issue: string (required)
+    //   - number: number (required)
+    //   - color: string (required, 'red', 'green', 'violet')
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    match /daily_history/{date} {
+      // Allow public read access for testing
+      allow read: if true;
+      // No one can write to the history from the client
+      allow write: if false;
+    }
+  }
+}
