@@ -58,18 +58,22 @@ async function syncData() {
             return;
         }
 
-        const sanitized = items.map(item => ({
+        let sanitized = items.map(item => ({
             issue: String(item.issue),
             color: String(item.color || 'UNKNOWN'),
             timestamp: Number(item.timestamp || Date.now())
         }));
 
+        // Remove duplicates WITHIN the same request to prevent Supabase ON CONFLICT error
+        const uniqueItems = Array.from(new Map(sanitized.map(item => [item.issue, item])).values());
+
         const { error } = await supabase
             .from('wingo_history')
-            .upsert(sanitized, { onConflict: 'issue' });
+            .upsert(uniqueItems, { onConflict: 'issue' });
 
         if (error) console.error("Supabase Error:", error.message);
-        else console.log(`Sync Successful: ${sanitized.length} rounds.`);
+        else console.log(`Sync Successful: ${uniqueItems.length} unique rounds.`);
+
         
     } catch (e) {
         console.error("Critical Sync Error:", e.message);
