@@ -69,20 +69,10 @@ async function run() {
   } else {
     console.log('Success! Data updated.');
     
-    // [ROLLING DATA CLEANUP] Delete data older than 48 hours
-    const fortyEightHoursAgo = Date.now() - (2 * 24 * 60 * 60 * 1000);
-    console.log(`Cleaning up data older than: ${new Date(fortyEightHoursAgo).toISOString()}`);
-    
-    const { error: deleteError } = await supabase
-      .from('wingo_history')
-      .delete()
-      .lt('timestamp', fortyEightHoursAgo);
-      
-    if (deleteError) {
-      console.error('Supabase Error (Cleanup):', deleteError.message);
-    } else {
-      console.log('Cleanup successful: Data limited to latest 2 days.');
-    }
+    // [ROLLING DATA CLEANUP - DISABLED] 
+    // We need to accumulate data for V3 walk-forward validation. Do not delete old data.
+    // Data limited only by Supabase free tier (500MB is enough for over 15 years).
+    console.log('Rolling data cleanup is DISABLED. Accumulating long-term data for V3 Engine...');
   }
 }
 
