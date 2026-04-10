@@ -81,7 +81,27 @@ async function syncData() {
             .upsert(uniqueItems, { onConflict: 'issue' });
 
         if (error) console.error("Supabase Error:", error.message);
-        else console.log(`Sync Successful: ${uniqueItems.length} unique rounds.`);
+        else {
+            console.log(`Sync Successful: ${uniqueItems.length} unique rounds.`);
+            
+            // Gap Detection: check for missing rounds in this batch
+            const issues = uniqueItems.map(i => i.issue).sort();
+            if (issues.length >= 2) {
+                let gaps = 0;
+                for (let k = 1; k < issues.length; k++) {
+                    // Issue numbers within the same day should be sequential
+                    // Cross-day gaps are expected (date prefix changes)
+                    const prev = issues[k-1];
+                    const curr = issues[k];
+                    // Only check same-day gaps (first 8 chars = YYYYMMDD)
+                    if (prev.substring(0, 8) === curr.substring(0, 8)) {
+                        const diff = parseInt(curr.slice(-4)) - parseInt(prev.slice(-4));
+                        if (diff > 2) gaps++;
+                    }
+                }
+                if (gaps > 0) console.warn(`[GAP-ALERT] ${gaps} gap(s) detected in batch! Range: ${issues[0]} → ${issues[issues.length-1]}`);
+            }
+        }
 
         
     } catch (e) {
@@ -93,13 +113,39 @@ async function syncData() {
 // 24/7 Loop: Run every 30 seconds
 setInterval(syncData, 30000);
 
-// Basic Health Check
+// Health Check with latest issue info
+let lastSyncedIssue = null;
+const origSync = syncData;
+syncData = async function() {
+    await origSync();
+    // Track last synced issue for health endpoint
+    try {
+        const { data } = await supabase.from('wingo_history').select('issue').order('issue', { ascending: false }).limit(1);
+        if (data && data[0]) lastSyncedIssue = data[0].issue;
+    } catch (e) { /* non-critical */ }
+};
+
 app.get('/', (req, res) => {
-    res.send({ status: 'online', message: 'WinGo 24/7 Collector is active.' });
+    res.send({ 
+        status: 'online', 
+        message: 'WinGo 24/7 Collector is active.',
+        lastIssue: lastSyncedIssue,
+        uptime: process.uptime()
+    });
 });
 
-app.listen(port, () => {
-    console.log(`Collector server listening on port ${port}`);
-    syncData();
-});
+if (process.env.RUN_ONCE === 'true') {
+    syncData().then(() => {
+        console.log("Run once complete. Exiting...");
+        process.exit(0);
+    }).catch(err => {
+        console.error("Run once failed:", err);
+        process.exit(1);
+    });
+} else {
+    app.listen(port, () => {
+        console.log(`Collector server listening on port ${port}`);
+        syncData();
+    });
+}
 
