@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "echo \"V3 pipeline deployed. No frontend build required.\"",
-    "start": "node server_collector.js"
+    "start": "node server_collector.js",
+    "collector": "node server_collector.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.103.0",
